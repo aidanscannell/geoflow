@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "geoflow"
+version = "0.1.0"
+description = "Minimal library for geometric machine learning in TensorFlow"
+authors = ["Aidan Scannell <scannell.aidan@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+tensorflow = "^2.5.0"
+numpy = "^1.19.4"
+matplotlib = "^3.4.2"
+tensor-annotations = {git = "https://github.com/deepmind/tensor_annotations"}
+gpflow = "^2.2.1"
+
+[tool.poetry.dev-dependencies]
+black = "^21.5b2"
+pyflakes = "^2.3.1"
+isort = "^5.8.0"
+pytest = "^6.2.4"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
