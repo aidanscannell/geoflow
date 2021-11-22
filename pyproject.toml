@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "geoflow"
 version = "0.1.0"
-description = "Minimal library for geometric machine learning in TensorFlow"
+description = "Minimal library for geometric machine learning in TensorFlow (and GPflow)"
 authors = ["Aidan Scannell <scannell.aidan@gmail.com>"]
 
 [tool.poetry.dependencies]
