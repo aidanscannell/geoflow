@@ -7,6 +7,7 @@ from gpflow.kernels import SeparateIndependent, SquaredExponential
 from gpflow.likelihoods import Gaussian
 from gpflow.inducing_variables import InducingPoints
 from gpflow.mean_functions import Constant
+from gpflow import default_float
 from geoflow.gp import SVGP
 
 # from gpflow.models import SVGP
@@ -19,7 +20,7 @@ num_data = 10
 input_dim = 2
 output_dim = 1
 num_inducing = 30
-Xnew = rng.randn(num_data, input_dim)
+Xnew = tf.constant(rng.randn(num_data, input_dim), dtype=default_float())
 print(Xnew.shape)
 
 
@@ -63,6 +64,12 @@ print(svgp.kernel.lengthscales)
 manifold = GPManifold(gp=svgp)
 
 
+def test_energy():
+    """Check shapes of output"""
+
+    f_mean, f_cov = manifold.embed(Xnew)
+
+
 def test_embed():
     """Check shapes of output"""
 
@@ -70,6 +77,10 @@ def test_embed():
     print(f_mean.shape)
     print(f_cov.shape)
     jac_mean, jac_cov = manifold.embed_jac(Xnew)
+    print(jac_mean.shape)
+    print(jac_cov.shape)
+    print(jac_mean)
+    print(jac_cov)
 
     # if num_data is not None:
     #     assert inner_prod.shape[0] == num_data
@@ -91,6 +102,8 @@ def test_embed():
 
 
 test_embed()
+# test_energy()
+
 # @parameterized.product(num_data=num_datas)
 # def test_inner_product(self, num_data):
 #     """Check shapes of output"""
