@@ -1,19 +1,14 @@
 #!/usr/bin/env python3
-from functools import partial
 from typing import Optional, Tuple
 
 import tensor_annotations.tensorflow as ttf
 import tensorflow as tf
-from gpflow.conditionals import base_conditional, conditional
-from gpflow.conditionals.util import separate_independent_conditional_implementation
+from gpflow.conditionals import base_conditional
 from gpflow.config import default_float, default_jitter
-from gpflow.inducing_variables import InducingVariables
 from gpflow.kernels import Kernel
 from gpflow.mean_functions import MeanFunction
 from gpflow.models import SVGP
-from gpflow.types import MeanAndVariance
 
-from geoflow.conditionals import covariance_conditional, svgp_covariance_conditional
 from geoflow.custom_types import InputDim, NumData, One, OutputDim
 
 InputData = None
