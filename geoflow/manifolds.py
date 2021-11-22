@@ -1,24 +1,18 @@
 #!/usr/bin/env python3
 import abc
 import typing
-from typing import Optional, Tuple, Union
+from typing import Optional, Union
+
 import tensor_annotations.tensorflow as ttf
 import tensorflow as tf
-from geoflow.custom_types import InputDim, NumData
 from gpflow.models import GPModel
 from gpflow.types import MeanAndVariance
-from geoflow.gp import predict_jacobian
-
-# import jax
-# import jax.scipy as jsp
-# import tensor_annotations.jax as ttf
-# from gpjax.custom_types import InputDim, MeanAndCovariance, NumData, OutputDim
-# from gpjax.models import GPModel
-# from jax import grad
 from tensor_annotations import axes
 
+from geoflow.custom_types import InputDim, NumData
+from geoflow.gp import predict_jacobian
+
 TwoInputDim = typing.NewType("TwoInputDim", axes.Axis)  # 2*InputDim
-# from tromp.curve import BasicCurve
 
 
 class Manifold(abc.ABC):
