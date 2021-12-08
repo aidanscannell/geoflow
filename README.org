@@ -1,0 +1,17 @@
+#+TITLE: =geoflow=: Geometric Machine Learning in TensorFlow (and GPflow)
+/Disclaimer: This is research code that I am using for my PhD -- so it may change!/
+
+=geoflow= is a minimal library for geometric machine learning in TensorFlow and GPflow.
+It implements stochastic Riemannian manifolds whose coordinate maps are modelled using (single-output and multiple-output) Gaussian processes (GP) and Sparse Variational Gaussian processes (SVGP) from GPflow.
+=geoflow= uses [[https://github.com/GPflow/GPflow.git][GPflow 2.2]]/[[https://github.com/tensorflow/tensorflow.git][TensorFlow 2.4+]] for running computations, which allows fast execution on GPUs, and uses Python ≥ 3.8.
+It was originally created by [[https://www.aidanscannell.com/][Aidan Scannell]].
+
+Features:
+- Calculation of expected Riemannian metric,
+- Geodesic ODE based on expected Riemannian metric,
+- Curve energy based on expected Riemannian metric,
+- Gaussian process derivatives wrt inputs,
+   - Currently only works for =SquaredExponential= kernel as autodiff can't calculate kernel Hessian correctly (note that autodiff can be use for kernel Jacobian),
+  - Implemented using multiple dispatch (similar to GPflow's conditionals) to handle different kernel/inducing variable combinations,
+  - Works for multioutput GPs with =SeparateIndependent= kernel and =SharedIndependentInducingVariables=,
+  - Implemented with/without precompute using GPflow's posteriors.
