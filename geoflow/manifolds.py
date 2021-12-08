@@ -134,16 +134,11 @@ class GPManifold(Manifold):
         ttf.Tensor2[InputDim, InputDim], ttf.Tensor3[NumData, InputDim, InputDim]
     ]:
         """Return the metric tensor at a specified point."""
-        num_data = Xnew.shape[0]
-        input_dim = Xnew.shape[1]
-        jac_mean, jac_cov = self.embed_jac(Xnew)
-        # print("jac_mean {}, jac_cov {}".format(jac_mean.shape, jac_cov.shape))
-        print("jac")
-        print(jac_mean)
-        print(jac_cov)
-        output_dim = jac_mean.shape[-1]
-        assert jac_mean.shape == (num_data, input_dim, output_dim)
-        assert jac_cov.shape == (num_data, output_dim, input_dim, input_dim)
+        num_data, input_dim = Xnew.shape
+        jac_mean, jac_cov = self.embed_jac(Xnew, full_cov=True, full_output_cov=False)
+        print("jac_mean {}, jac_cov {}".format(jac_mean.shape, jac_cov.shape))
+        assert jac_mean.shape == (num_data, input_dim, self.num_latent_gps)
+        assert jac_cov.shape == (num_data, self.num_latent_gps, input_dim, input_dim)
         jac_prod = jac_mean @ tf.transpose(jac_mean, [0, 2, 1])
         assert jac_prod.shape == (num_data, input_dim, input_dim)
         metric = jac_prod + self.covariance_weight * tf.reduce_prod(jac_cov, 1)
