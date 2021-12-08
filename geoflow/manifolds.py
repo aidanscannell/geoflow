@@ -146,8 +146,7 @@ class GPManifold(Manifold):
         assert jac_cov.shape == (num_data, output_dim, input_dim, input_dim)
         jac_prod = jac_mean @ tf.transpose(jac_mean, [0, 2, 1])
         assert jac_prod.shape == (num_data, input_dim, input_dim)
-        # metric = jac_prod + self.covariance_weight * jac_cov
-        metric = jac_prod + self.covariance_weight * tf.reduce_sum(jac_cov, 1)
+        metric = jac_prod + self.covariance_weight * tf.reduce_prod(jac_cov, 1)
         assert metric.shape == (num_data, input_dim, input_dim)
         return metric
 
