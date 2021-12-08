@@ -152,12 +152,16 @@ class GPManifold(Manifold):
         return metric
 
     def embed(
-        self, Xnew: Union[ttf.Tensor1[InputDim], ttf.Tensor2[NumData, InputDim]]
+        self,
+        Xnew: Union[ttf.Tensor1[InputDim], ttf.Tensor2[NumData, InputDim]],
+        full_cov: Optional[bool] = True,
+        full_output_cov: Optional[bool] = False,
     ) -> MeanAndVariance:
         """Embed Xnew into (mu, var) space."""
-        means, vars = self.gp.predict_f(Xnew, full_cov=False)
+        means, vars = self.posterior.predict_f(
+            Xnew, full_cov=full_cov, full_output_cov=full_output_cov
+        )
         return means, vars
-        # return means.reshape(-1), vars.reshape(-1)
 
     def embed_jac(
         self,
