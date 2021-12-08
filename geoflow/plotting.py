@@ -4,7 +4,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from gpflow import default_float
-from geoflow.gp import predict_jacobian
 from geoflow.manifolds import GPManifold
 
 cmap = cm.coolwarm
@@ -33,19 +32,12 @@ class ManifoldPlotter:
         self.test_inputs = test_inputs
         self.figsize = (12, 4)
 
-        self.gp = self.manifold.gp
-        self.f_mean, self.f_var = self.gp.predict_f(self.test_inputs, full_cov=False)
-        self.jac_mean, self.jac_var = predict_jacobian(
-            self.gp, self.test_inputs, full_cov=False
+        self.f_mean, self.f_var = self.manifold.embed(self.test_inputs, full_cov=False)
+        self.jac_mean, self.jac_var = self.manifold.embed_jac(
+            self.test_inputs, full_cov=True
         )
-        print("self.jac_var")
-        print(self.jac_var.shape)
         self.metric = self.manifold.metric(self.test_inputs)
-        print("self.metric")
-        print(self.metric.shape)
         self.metric_trace = tf.reshape(tf.linalg.trace(self.metric), (-1, 1))
-        print("self.metric_trace")
-        print(self.metric_trace.shape)
 
     def plot_jacobian_mean(self):
         fig, axs = self.create_jacobian_mean_fig_axs()
