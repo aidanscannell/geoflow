@@ -5,12 +5,13 @@ from typing import Optional, Union
 
 import tensor_annotations.tensorflow as ttf
 import tensorflow as tf
+from gpflow import posteriors
 from gpflow.models import GPModel
 from gpflow.types import MeanAndVariance
 from tensor_annotations import axes
 
-from geoflow.custom_types import InputDim, NumData
-from geoflow.gp import predict_jacobian
+from geoflow.custom_types import InputDim, JacMeanAndVariance, NumData
+from geoflow.gp.conditionals import jacobian_conditional_with_precompute
 
 TwoInputDim = typing.NewType("TwoInputDim", axes.Axis)  # 2*InputDim
 
@@ -121,8 +122,11 @@ class GPManifold(Manifold):
         gp: GPModel,
         covariance_weight: Optional[float] = 1.0,
     ):
-        self.gp = gp
         self.covariance_weight = covariance_weight
+        self.posterior = gp.posterior(
+            precompute_cache=posteriors.PrecomputeCacheType.TENSOR
+        )
+        self.num_latent_gps = gp.num_latent_gps
 
     def metric(
         self, Xnew: Union[ttf.Tensor1[InputDim], ttf.Tensor2[NumData, InputDim]]
@@ -156,10 +160,21 @@ class GPManifold(Manifold):
         # return means.reshape(-1), vars.reshape(-1)
 
     def embed_jac(
-        self, Xnew: Union[ttf.Tensor1[InputDim], ttf.Tensor2[NumData, InputDim]]
-    ):
+        self,
+        Xnew: Union[ttf.Tensor1[InputDim], ttf.Tensor2[NumData, InputDim]],
+        full_cov: Optional[bool] = True,
+        full_output_cov: Optional[bool] = False,
+    ) -> JacMeanAndVariance:
         """Embed the manifold into (mu, var) space."""
-        # jac_mean, jac_cov = self.gp.predict_jacobian(Xnew)
-        jac_mean, jac_cov = predict_jacobian(self.gp, Xnew)
-        # jac_mean, jac_cov = gp_predict_jacobian(Xnew)
+        jac_mean, jac_cov = jacobian_conditional_with_precompute(
+            Xnew,
+            self.posterior.X_data,
+            kernel=self.posterior.kernel,
+            mean_function=self.posterior.mean_function,
+            alpha=self.posterior.alpha,
+            Qinv=self.posterior.Qinv,
+            num_latent_gps=self.num_latent_gps,
+            full_cov=full_cov,
+            full_output_cov=full_output_cov,
+        )
         return jac_mean, jac_cov
