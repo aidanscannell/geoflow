@@ -19,3 +19,7 @@ JacMeanAndVariance = Tuple[
     ttf.Tensor3[NumData, InputDim, OutputDim],
     ttf.Tensor4[NumData, OutputDim, InputDim, InputDim],
 ]
+MeanAndVariance = Tuple[
+    ttf.Tensor2[NumData, OutputDim],
+    ttf.Tensor3[NumData, OutputDim, InputDim],
+]

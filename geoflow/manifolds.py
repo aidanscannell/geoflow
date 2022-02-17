@@ -7,10 +7,9 @@ import tensor_annotations.tensorflow as ttf
 import tensorflow as tf
 from gpflow import posteriors
 from gpflow.models import GPModel
-from gpflow.types import MeanAndVariance
 from tensor_annotations import axes
 
-from geoflow.custom_types import InputDim, JacMeanAndVariance, NumData
+from geoflow.custom_types import InputDim, JacMeanAndVariance, NumData, MeanAndVariance
 from geoflow.gp.conditionals import jacobian_conditional_with_precompute
 
 TwoInputDim = typing.NewType("TwoInputDim", axes.Axis)  # 2*InputDim
