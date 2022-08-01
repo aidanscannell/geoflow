@@ -8,13 +8,11 @@ from geoflow.custom_types import (
     JacMeanAndVariance,
     NumData,
     NumInducing,
-    One,
     OutputDim,
 )
 from geoflow.gp.covariances import hess_Kuu_wrt_Xnew, jac_Kuf_wrt_Xnew
 from gpflow import posteriors
-from gpflow.conditionals import base_conditional
-from gpflow.kernels import Kernel, SquaredExponential
+from gpflow.kernels import Kernel
 from gpflow.mean_functions import MeanFunction
 from gpflow.utilities.ops import leading_transpose
 
@@ -89,7 +87,6 @@ def jacobian_conditional(
     """Mean and covariance of GP derivative at xnew for single-output GP"""
     # TODO what's the best way to get num_latent_gps
     num_latent_gps = f.shape[-1]
-    print("hi aidan")
     posterior = posteriors.create_posterior(
         kernel=kernel,
         inducing_variable=X,
@@ -104,8 +101,10 @@ def jacobian_conditional(
         posterior.X_data,
         kernel=posterior.kernel,
         mean_function=posterior.mean_function,
-        alpha=posterior.alpha,
-        Qinv=posterior.Qinv,
+        # alpha=posterior.cache.alpha,
+        # Qinv=posterior.cache.Qinv,
+        alpha=posterior.cache[0],
+        Qinv=posterior.cache[1],
         num_latent_gps=num_latent_gps,
         full_cov=full_cov,
         full_output_cov=full_output_cov,

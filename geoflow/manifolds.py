@@ -5,17 +5,21 @@ from typing import Optional, Union
 
 import tensor_annotations.tensorflow as ttf
 import tensorflow as tf
-from gpflow import posteriors
+from gpflow import default_float, posteriors
+from gpflow.utilities.ops import leading_transpose
 from gpflow.models import GPModel
 from tensor_annotations import axes
 
-from geoflow.custom_types import InputDim, JacMeanAndVariance, NumData, MeanAndVariance
+from geoflow.custom_types import InputDim, JacMeanAndVariance, MeanAndVariance, NumData
 from geoflow.gp.conditionals import jacobian_conditional_with_precompute
 
 TwoInputDim = typing.NewType("TwoInputDim", axes.Axis)  # 2*InputDim
 
 
 class Manifold(abc.ABC):
+
+    # JITTER = 1e-6
+
     def length(self, curve):
         """Compute the discrete length of a given curve."""
         raise NotImplementedError
@@ -27,8 +31,6 @@ class Manifold(abc.ABC):
         :returns: energy of the curve
         """
         energy = self.inner_product(positions, velocities, velocities)
-        print("energy yo")
-        print(energy)
         return tf.reduce_sum(energy)
 
     def metric(
@@ -72,29 +74,73 @@ class Manifold(abc.ABC):
         self, pos: ttf.Tensor1[InputDim], vel: ttf.Tensor1[InputDim]
     ) -> ttf.Tensor1[TwoInputDim]:
         """Evaluate the geodesic ODE of the manifold."""
-        vec_metric = lambda x: tf.reshape(self.metric(x), -1)
-        grad_vec_metric_wrt_pos = jax.jacfwd(vec_metric)(pos)
-        metric = self.metric(pos)
-        inner_prod = self._inner_product_given_metric(metric, vel, vel)
+        with tf.GradientTape(persistent=True, watch_accessed_variables=False) as tape:
+            tape.watch(pos)
+            metric = self.metric(pos)  # [..., D, D]
+            print("metric.shape")
+            print(metric.shape)
+            vec_metric = tf.reshape(metric, [*metric.shape[:-2], -1])  # [..., 2D]
+        grad_vec_metric_wrt_pos = tape.batch_jacobian(vec_metric, pos)  # [..., 2D, D]
+        print("grad_vec_metric_wrt_pos")
+        print(grad_vec_metric_wrt_pos.shape)
 
-        vel = vel.reshape(1, -1)
-        kron_vel = tf.kron(vel, vel).T
+        # grad_vec_metric_wrt_pos = jax.jacfwd(vec_metric)(pos)
+        # metric = self.metric(pos)
+        # inner_prod = self._inner_product_given_metric(metric, vel, vel)
+        print("vel")
+        print(vel.shape)
+        if len(vel.shape) >= 2:
+            vel_expanded = tf.expand_dims(vel, -2)
+        operator_1 = tf.linalg.LinearOperatorFullMatrix(vel_expanded)
+        # operator_2 = tf.linalg.LinearOperatorFullMatrix(
+        #     leading_transpose(vel, [..., -1, -2])
+        # )
+        kron_operator = tf.linalg.LinearOperatorKronecker([operator_1, operator_1])
+        kron_vel = kron_operator.to_dense()  # [..., D^2, 1]
+        print("kron_vel")
+        print(kron_vel.shape)
 
-        jitter = 1e-6
-        pos_dim = pos.shape[0]
-        metric += tf.eye(pos_dim) * jitter
-        # rhs = grad_vec_metric_wrt_pos.T @ kron_vel
-        # chol = jsp.linalg.cholesky(metric, lower=True)
+        # metric = metric + (
+        #     tf.eye(
+        #         metric.shape[-2],
+        #         metric.shape[-1],
+        #         batch_shape=metric.shape[:-2],
+        #         dtype=default_float(),
+        #     )
+        #     # * self.JITTER
+        # )
+        # trans = leading_transpose(grad_vec_metric_wrt_pos, [..., -1, -2])
+        # print("trans")
+        # print(trans.shape)
+        rhs = leading_transpose(kron_vel @ grad_vec_metric_wrt_pos, [..., -1, -2])
+        print("rhs")
+        print(rhs.shape)
+        chol = tf.linalg.cholesky(metric)
+        print("chol")
+        print(chol.shape)
+        acc = -0.5 * tf.linalg.cholesky_solve(chol, rhs)
         # inv_metric = jsp.linalg.solve_triangular(chol, rhs, lower=True)
         # print(inv_metric)
         # acc = -0.5 * inv_metric
         # print(acc)
 
-        inv_metric = tf.linalg.inv(metric)
-        acc = -0.5 * inv_metric @ grad_vec_metric_wrt_pos.T @ kron_vel
+        # inv_metric = tf.linalg.inv(metric)
+        # print("inv_metric")
+        # print(inv_metric.shape)
+        # acc = -0.5 * inv_metric @ grad_vec_metric_wrt_pos @ kron_vel
+        # acc = -0.5 * kron_vel @ grad_vec_metric_wrt_pos @ inv_metric
+        print("acc.shape")
+        print(acc.shape)
+        state_prime = tf.concat([vel, acc[..., 0]], -1)
+        print("state_prime")
+        print(state_prime)
+        # return state_prime[:, 0, :]
+        return state_prime
 
-        state_prime = tf.concatenate([vel.T, acc], 0)
-        return state_prime.flatten()
+        # state_prime = tf.concatenate([vel.T, acc], 0)
+        # print("state_prime.shape")
+        # print(state_prime.shape)
+        # return state_prime.flatten()
 
     def geodesic_ode(
         self,
@@ -107,7 +153,19 @@ class Manifold(abc.ABC):
         :param vel: array representing the velocities at the points
         :returns: array of accelerations at the points
         """
+        print("geodeic_oded")
+        print(pos.shape)
+        print(vel.shape)
+        print(tf.rank(pos))
         return self._geodesic_ode(pos, vel)
+        # if len(pos.shape) == 1:
+        #     return self._geodesic_ode(pos, vel)
+        # else:
+        #     print("MAPPIng")
+        #     a = tf.map_fn(self._geodesic_ode, (pos, vel))
+        #     print("a")
+        #     print(a)
+        #     return a
 
 
 class GPManifold(Manifold):
@@ -121,6 +179,7 @@ class GPManifold(Manifold):
         gp: GPModel,
         covariance_weight: Optional[float] = 1.0,
     ):
+        self.gp = gp
         self.covariance_weight = covariance_weight
         self.posterior = gp.posterior(
             precompute_cache=posteriors.PrecomputeCacheType.TENSOR
@@ -163,13 +222,18 @@ class GPManifold(Manifold):
         full_output_cov: Optional[bool] = False,
     ) -> JacMeanAndVariance:
         """Embed the manifold into (mu, var) space."""
+        print("Xnew.shape")
+        print(Xnew.shape)
+        print(self.posterior.X_data.Z.shape)
+        print(self.posterior.cache[0].shape)
+        print(self.posterior.cache[1].shape)
         jac_mean, jac_cov = jacobian_conditional_with_precompute(
             Xnew,
             self.posterior.X_data,
             kernel=self.posterior.kernel,
             mean_function=self.posterior.mean_function,
-            alpha=self.posterior.alpha,
-            Qinv=self.posterior.Qinv,
+            alpha=self.posterior.cache[0],
+            Qinv=self.posterior.cache[1],
             num_latent_gps=self.num_latent_gps,
             full_cov=full_cov,
             full_output_cov=full_output_cov,
